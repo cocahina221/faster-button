@@ -1,10 +1,13 @@
 # faster-button
 
-A Claude Code mod that adds a **⚡ Faster** toggle above the prompt box. While it is on,
-every prompt you send carries an instruction asking Claude to work faster: act on the
-most reasonable interpretation, skip preamble and recaps, batch tool calls in parallel,
-read only what's needed, and keep replies short. Press it again to turn it off. The
-setting is remembered across sessions. Each press plays a sound.
+A Claude Code mod that adds a **⚡ Faster** switch above the prompt box. Turning it on:
+
+- turns on Claude Code's built-in fast mode (the same as `/fast`), so the model generates output faster;
+- asks Claude to work faster on every prompt (fewer steps, shorter replies);
+- if Claude is mid-response, passes the request along right after its next tool call.
+
+Each flip plays a sound. The setting is remembered across sessions. Fast mode is billed at a
+higher rate than normal usage.
 
 ## Install
 

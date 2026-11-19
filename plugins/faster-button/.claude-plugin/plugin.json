@@ -1,1 +1,1 @@
-{"name": "faster-button", "version": "0.5.0", "description": "A button above the prompt that tells Claude to work faster", "types": "./types/index.d.ts"}
+{"name": "faster-button", "version": "0.6.0", "description": "A switch that turns on fast mode and tells Claude to work faster, with a sound", "types": "./types/index.d.ts"}
