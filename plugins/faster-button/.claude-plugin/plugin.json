@@ -1,0 +1,1 @@
+{ "name": "faster-button", "version": "0.1.0", "description": "A button above the prompt that tells Claude to work faster", "types": "./types/index.d.ts" }

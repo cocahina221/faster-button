@@ -1,0 +1,11 @@
+{
+  "name": "faster-button",
+  "owner": { "name": "faster-button" },
+  "plugins": [
+    {
+      "name": "faster-button",
+      "source": "./plugins/faster-button",
+      "description": "A button above the prompt that tells Claude to work faster"
+    }
+  ]
+}
