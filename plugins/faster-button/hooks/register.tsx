@@ -1,46 +1,56 @@
-import { atom, read, update } from 'claude-code'
-import type { Register } from 'claude-code'
+import type { EngineInterface, Register } from 'claude-code'
 
-const isOn = atom({ plugin: 'faster-button', key: 'isOn' } as const, false)
+const SOUND = 'sounds/buttonSound.mp3'
+const NOTE = 'The user pressed the Faster button: work faster. Skip narration, batch tool calls, and wrap up as quickly as you can.'
 
-const FASTER = `The user pressed the "Faster" button: work faster.
-- Act on the most reasonable interpretation; ask only if truly blocked.
-- No preamble, planning narration or end-of-turn recap.
-- Batch independent tool calls in parallel; read only what you need.
-- Don't spawn subagents; run only the most relevant test, if any.
-- Keep the reply to a few lines.`
+async function playSound($: EngineInterface) {
+  const { platform } = await $.session.info()
+  if (platform === 'windows') {
+    const file = `${$.plugin.root}/${SOUND}`.replace(/\//g, '\\').replace(/'/g, "''")
+    const ps = `Add-Type -AssemblyName PresentationCore; $p = New-Object System.Windows.Media.MediaPlayer; $p.Open([uri]'${file}'); $p.Play(); Start-Sleep -Milliseconds 3000`
+    await $.process.run(['powershell', '-NoProfile', '-NonInteractive', '-Command', ps], { timeoutMs: 10000 })
+  } else {
+    await $.audio.play({ asset: SOUND })
+  }
+}
 
 export const register: Register = on => {
-  on('session.start', async ($, e, next) => {
-    const saved = (await $.store.get('isOn')) === true
-    await update($, isOn, () => saved)
+  let isBusy = false
+  let isPending = false
+
+  on('turn.start', ($, e, next) => {
+    isBusy = true
     return next(e)
   })
 
-  on('prompt.submit', async ($, e, next) => {
-    const active = await read($, isOn).catch(() => false)
-    if (!active) return next(e)
-    return next({ ...e, context: [...(e.context ?? []), FASTER] })
+  on('turn.complete', ($, e, next) => {
+    isBusy = false
+    isPending = false
+    return next(e)
   })
+
+  // Pressed mid-task: Claude reads the note right after its next tool result.
+  on('tool.call', async ($, e, next) => {
+    const r = await next(e)
+    if (!isPending || r.deny !== undefined) return r
+    isPending = false
+    return { ...r, context: [...(r.context ?? []), NOTE] }
+  }).catch(($, e, next) => next(e))
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey) return next(e)
-    const on_ = await read($, isOn)
-    const { Box, Button, Text } = $.ui.resolve(e)
+    const { Button } = $.ui.resolve(e)
 
-    const toggle = async () => {
-      const value = !on_
-      $.audio.play({ asset: 'sounds/buttonSound.mp3' }).catch(() => {})
-      await update($, isOn, () => value)
-      await $.store.set('isOn', value)
-      $.ui.toast(value ? 'Faster mode on' : 'Faster mode off')
+    const press = async () => {
+      void playSound($).catch(() => {})
+      if (isBusy) {
+        isPending = true
+        $.ui.toast('Told Claude to work faster')
+      } else {
+        await $.prompt.submit({ text: 'Work faster.', asUser: true })
+      }
     }
 
-    return (
-      <Box>
-        <Button key="faster" label={on_ ? '⚡ Faster: ON' : '⚡ Faster: off'} onPress={toggle} />
-        {on_ ? <Text dimColor> every prompt asks Claude to work faster</Text> : null}
-      </Box>
-    )
+    return <Button key="faster" label="⚡ Work faster" onPress={press} />
   })
 }

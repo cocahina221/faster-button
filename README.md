@@ -1,10 +1,7 @@
 # faster-button
 
-A Claude Code mod that adds a **⚡ Faster** toggle above the prompt box. While it is on,
-every prompt you send carries an instruction asking Claude to work faster: act on the
-most reasonable interpretation, skip preamble and recaps, batch tool calls in parallel,
-read only what's needed, and keep replies short. Press it again to turn it off. The
-setting is remembered across sessions.
+A Claude Code mod that adds a **⚡ Work faster** button above the prompt box. Each press plays a sound and
+tells Claude to work faster, even in the middle of a task.
 
 ## Install
 
