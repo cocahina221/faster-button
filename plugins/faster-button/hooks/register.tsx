@@ -30,6 +30,7 @@ export const register: Register = on => {
 
     const toggle = async () => {
       const value = !on_
+      $.audio.play({ asset: 'sounds/buttonSound.mp3' }).catch(() => {})
       await update($, isOn, () => value)
       await $.store.set('isOn', value)
       $.ui.toast(value ? 'Faster mode on' : 'Faster mode off')
