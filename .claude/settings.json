@@ -1,0 +1,8 @@
+{
+  "extraKnownMarketplaces": {
+    "faster-button": {
+      "source": { "source": "github", "repo": "cocahina221/faster-button" }
+    }
+  },
+  "enabledPlugins": { "faster-button@faster-button": true }
+}
