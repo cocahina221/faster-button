@@ -1,7 +1,16 @@
+import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
+const isOn = atom({ plugin: 'faster-button', key: 'isOn' } as const, false)
+
+const FASTER = `The user pressed the "Faster" button: work faster.
+- Act on the most reasonable interpretation; ask only if truly blocked.
+- No preamble, planning narration or end-of-turn recap.
+- Batch independent tool calls in parallel; read only what you need.
+- Don't spawn subagents; run only the most relevant test, if any.
+- Keep the reply to a few lines.`
+
 const SOUND = 'sounds/buttonSound.mp3'
-const NOTE = 'The user pressed the Faster button: work faster. Skip narration, batch tool calls, and wrap up as quickly as you can.'
 
 async function playSound($: EngineInterface) {
   const { platform } = await $.session.info()
@@ -15,42 +24,36 @@ async function playSound($: EngineInterface) {
 }
 
 export const register: Register = on => {
-  let isBusy = false
-  let isPending = false
-
-  on('turn.start', ($, e, next) => {
-    isBusy = true
+  on('session.start', async ($, e, next) => {
+    const saved = (await $.store.get('isOn')) === true
+    await update($, isOn, () => saved)
     return next(e)
   })
 
-  on('turn.complete', ($, e, next) => {
-    isBusy = false
-    isPending = false
-    return next(e)
+  on('prompt.submit', async ($, e, next) => {
+    const active = await read($, isOn).catch(() => false)
+    if (!active) return next(e)
+    return next({ ...e, context: [...(e.context ?? []), FASTER] })
   })
-
-  // Pressed mid-task: Claude reads the note right after its next tool result.
-  on('tool.call', async ($, e, next) => {
-    const r = await next(e)
-    if (!isPending || r.deny !== undefined) return r
-    isPending = false
-    return { ...r, context: [...(r.context ?? []), NOTE] }
-  }).catch(($, e, next) => next(e))
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey) return next(e)
-    const { Button } = $.ui.resolve(e)
+    const on_ = await read($, isOn)
+    const { Box, Button, Text } = $.ui.resolve(e)
 
-    const press = async () => {
+    const toggle = async () => {
+      const value = !on_
       void playSound($).catch(() => {})
-      if (isBusy) {
-        isPending = true
-        $.ui.toast('Told Claude to work faster')
-      } else {
-        await $.prompt.submit({ text: 'Work faster.', asUser: true })
-      }
+      await update($, isOn, () => value)
+      await $.store.set('isOn', value)
+      $.ui.toast(value ? 'Faster mode on' : 'Faster mode off')
     }
 
-    return <Button key="faster" label="⚡ Work faster" onPress={press} />
+    return (
+      <Box>
+        <Button key="faster" label={on_ ? '⚡ Faster: ON' : '⚡ Faster: off'} onPress={toggle} />
+        {on_ ? <Text dimColor> every prompt asks Claude to work faster</Text> : null}
+      </Box>
+    )
   })
 }
