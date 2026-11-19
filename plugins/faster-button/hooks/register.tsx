@@ -10,14 +10,15 @@ const FASTER = `The user pressed the "Faster" button: work faster.
 - Don't spawn subagents; run only the most relevant test, if any.
 - Keep the reply to a few lines.`
 
-const SOUND = 'sounds/buttonSound.mp3'
+const SOUND = 'sounds/buttonSound.wav'
 
 async function playSound($: EngineInterface) {
   const { platform } = await $.session.info()
   if (platform === 'windows') {
     const file = `${$.plugin.root}/${SOUND}`.replace(/\//g, '\\').replace(/'/g, "''")
-    const ps = `Add-Type -AssemblyName PresentationCore; $p = New-Object System.Windows.Media.MediaPlayer; $p.Open([uri]'${file}'); $p.Play(); Start-Sleep -Milliseconds 3000`
-    await $.process.run(['powershell', '-NoProfile', '-NonInteractive', '-Command', ps], { timeoutMs: 10000 })
+    const ps = `(New-Object System.Media.SoundPlayer '${file}').PlaySync()`
+    const r = await $.process.run(['powershell', '-NoProfile', '-NonInteractive', '-Command', ps], { timeoutMs: 10000 })
+    if (r.exitCode !== 0) throw new Error(r.stderr.trim() || `PowerShell exited with ${r.exitCode}`)
   } else {
     await $.audio.play({ asset: SOUND })
   }
@@ -43,7 +44,7 @@ export const register: Register = on => {
 
     const toggle = async () => {
       const value = !on_
-      void playSound($).catch(() => {})
+      void playSound($).catch(err => $.ui.toast(`Faster: sound failed: ${String(err).slice(0, 200)}`))
       await update($, isOn, () => value)
       await $.store.set('isOn', value)
       $.ui.toast(value ? 'Faster mode on' : 'Faster mode off')
@@ -51,7 +52,12 @@ export const register: Register = on => {
 
     return (
       <Box>
-        <Button key="faster" label={on_ ? '⚡ Faster: ON' : '⚡ Faster: off'} onPress={toggle} />
+        <Button key="faster" label={on_ ? 'Faster mode is on, press to turn off' : 'Faster mode is off, press to turn on'} onPress={toggle}>
+          ⚡ Faster{' '}
+          {on_
+            ? <Text backgroundColor="#16a34a" color="#ffffff" bold>{'  ON ● '}</Text>
+            : <Text backgroundColor="#6b7280" color="#ffffff">{' ● OFF  '}</Text>}
+        </Button>
         {on_ ? <Text dimColor> every prompt asks Claude to work faster</Text> : null}
       </Box>
     )
